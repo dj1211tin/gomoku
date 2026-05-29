@@ -1,32 +1,29 @@
 <!DOCTYPE html>
 <html lang="zh">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>AI五子棋</title>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>AI五子棋（升级版）</title>
 
 <style>
 body {
     margin: 0;
     background: #f2f2f2;
-    font-family: Arial, sans-serif;
     display: flex;
     justify-content: center;
     align-items: center;
     height: 100vh;
+    font-family: Arial;
 }
 
 .container {
     text-align: center;
-}
-
-h1 {
-    margin-bottom: 10px;
+    position: relative;
 }
 
 #status {
     font-size: 20px;
-    margin-bottom: 15px;
+    margin-bottom: 10px;
     font-weight: bold;
 }
 
@@ -38,27 +35,44 @@ canvas {
 }
 
 button {
-    margin-top: 20px;
-    padding: 12px 25px;
-    font-size: 18px;
+    margin-top: 15px;
+    padding: 10px 20px;
+    font-size: 16px;
     border: none;
-    border-radius: 10px;
     background: black;
     color: white;
+    border-radius: 10px;
     cursor: pointer;
 }
 
-button:hover {
-    opacity: 0.8;
+/* 🎯 胜利居中提示 */
+#winOverlay{
+    position:absolute;
+    width:600px;
+    height:600px;
+    display:none;
+    justify-content:center;
+    align-items:center;
+    font-size:70px;
+    font-weight:bold;
+    color:red;
+    background:rgba(255,255,255,0.35);
+    top:80px;
+    left:50%;
+    transform:translateX(-50%);
+    pointer-events:none;
 }
 </style>
 </head>
+
 <body>
 
 <div class="container">
-    <h1>🤖 AI人机五子棋</h1>
+    <h1>🤖 AI五子棋（交叉点版）</h1>
 
-    <div id="status">你是 ⚫ 黑棋</div>
+    <div id="status">你先手 ⚫</div>
+
+    <div id="winOverlay"></div>
 
     <canvas id="board" width="600" height="600"></canvas>
 
@@ -68,11 +82,13 @@ button:hover {
 </div>
 
 <script>
-const canvas = document.getElementById('board');
-const ctx = canvas.getContext('2d');
+const canvas = document.getElementById("board");
+const ctx = canvas.getContext("2d");
+
+const winEl = document.getElementById("winOverlay");
 
 const size = 15;
-const cellSize = 40;
+const grid = 40;
 const offset = 20;
 
 let board = [];
@@ -82,224 +98,178 @@ const HUMAN = 1;
 const AI = 2;
 
 function initBoard() {
-    board = [];
-
-    for (let i = 0; i < size; i++) {
-        board[i] = [];
-
-        for (let j = 0; j < size; j++) {
-            board[i][j] = 0;
-        }
-    }
+    board = Array(size).fill(null).map(() => Array(size).fill(0));
 }
 
 function drawBoard() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.clearRect(0, 0, 600, 600);
 
     for (let i = 0; i < size; i++) {
 
         ctx.beginPath();
-        ctx.moveTo(offset, offset + i * cellSize);
-        ctx.lineTo(offset + (size - 1) * cellSize, offset + i * cellSize);
+        ctx.moveTo(offset, offset + i * grid);
+        ctx.lineTo(offset + (size - 1) * grid, offset + i * grid);
         ctx.stroke();
 
         ctx.beginPath();
-        ctx.moveTo(offset + i * cellSize, offset);
-        ctx.lineTo(offset + i * cellSize, offset + (size - 1) * cellSize);
+        ctx.moveTo(offset + i * grid, offset);
+        ctx.lineTo(offset + i * grid, offset + (size - 1) * grid);
         ctx.stroke();
     }
 }
 
+// 🎯 交叉点落子
 function drawPiece(x, y, player) {
     ctx.beginPath();
-
     ctx.arc(
-        offset + x * cellSize,
-        offset + y * cellSize,
-        15,
+        offset + x * grid,
+        offset + y * grid,
+        14,
         0,
         Math.PI * 2
     );
 
-    ctx.fillStyle = player === HUMAN ? 'black' : 'white';
-
+    ctx.fillStyle = player === HUMAN ? "black" : "white";
     ctx.fill();
     ctx.stroke();
 }
 
-function checkWin(x, y, player) {
-
-    const directions = [
-        [1, 0],
-        [0, 1],
-        [1, 1],
-        [1, -1]
+// 胜利检测
+function checkWin(x, y, p) {
+    const dirs = [
+        [1,0],[0,1],[1,1],[1,-1]
     ];
 
-    for (let [dx, dy] of directions) {
-
+    for (let [dx,dy] of dirs) {
         let count = 1;
 
-        for (let dir of [-1, 1]) {
-
-            let nx = x + dx * dir;
-            let ny = y + dy * dir;
+        for (let d of [1,-1]) {
+            let nx = x + dx*d;
+            let ny = y + dy*d;
 
             while (
-                nx >= 0 &&
-                nx < size &&
-                ny >= 0 &&
-                ny < size &&
-                board[nx][ny] === player
+                nx>=0 && nx<size &&
+                ny>=0 && ny<size &&
+                board[nx][ny] === p
             ) {
                 count++;
-                nx += dx * dir;
-                ny += dy * dir;
+                nx += dx*d;
+                ny += dy*d;
             }
         }
 
-        if (count >= 5) {
-            return true;
-        }
+        if (count >= 5) return true;
     }
 
     return false;
 }
 
-function evaluatePosition(x, y, player) {
+// AI评分
+function score(x, y, p) {
+    const dirs = [[1,0],[0,1],[1,1],[1,-1]];
+    let s = 0;
 
-    const directions = [
-        [1, 0],
-        [0, 1],
-        [1, 1],
-        [1, -1]
-    ];
-
-    let score = 0;
-
-    for (let [dx, dy] of directions) {
-
+    for (let [dx,dy] of dirs) {
         let count = 1;
 
-        for (let dir of [-1, 1]) {
-
-            let nx = x + dx * dir;
-            let ny = y + dy * dir;
+        for (let d of [1,-1]) {
+            let nx = x + dx*d;
+            let ny = y + dy*d;
 
             while (
-                nx >= 0 &&
-                nx < size &&
-                ny >= 0 &&
-                ny < size &&
-                board[nx][ny] === player
+                nx>=0 && nx<size &&
+                ny>=0 && ny<size &&
+                board[nx][ny] === p
             ) {
                 count++;
-                nx += dx * dir;
-                ny += dy * dir;
+                nx += dx*d;
+                ny += dy*d;
             }
         }
 
-        score += Math.pow(count, 3);
+        s += count * count;
     }
 
-    return score;
+    return s;
 }
 
+// 🤖 AI下棋
 function aiMove() {
 
+    let best = null;
     let bestScore = -1;
-    let bestMove = null;
 
-    for (let x = 0; x < size; x++) {
+    for (let i = 0; i < size; i++) {
+        for (let j = 0; j < size; j++) {
 
-        for (let y = 0; y < size; y++) {
+            if (board[i][j] === 0) {
 
-            if (board[x][y] === 0) {
+                let attack = score(i,j,AI);
+                let defend = score(i,j,HUMAN);
 
-                let attackScore = evaluatePosition(x, y, AI);
-                let defenseScore = evaluatePosition(x, y, HUMAN);
+                let total = attack + defend * 1.2;
 
-                let totalScore = attackScore + defenseScore * 1.2;
-
-                if (totalScore > bestScore) {
-                    bestScore = totalScore;
-                    bestMove = { x, y };
+                if (total > bestScore) {
+                    bestScore = total;
+                    best = [i,j];
                 }
             }
         }
     }
 
-    if (bestMove) {
+    if (!best) return;
 
-        board[bestMove.x][bestMove.y] = AI;
+    let [x,y] = best;
 
-        drawPiece(bestMove.x, bestMove.y, AI);
+    board[x][y] = AI;
+    drawPiece(x,y,AI);
 
-        if (checkWin(bestMove.x, bestMove.y, AI)) {
-
-            gameOver = true;
-
-            document.getElementById('status').innerHTML = '🤖 AI获胜！';
-
-            return;
-        }
-
-        document.getElementById('status').innerHTML = '你的回合 ⚫';
+    if (checkWin(x,y,AI)) {
+        gameOver = true;
+        document.getElementById("status").innerText = "";
+        winEl.style.display = "flex";
+        winEl.innerText = "🤖 AI WIN!";
+        return;
     }
+
+    document.getElementById("status").innerText = "你的回合 ⚫";
 }
 
-canvas.addEventListener('click', function (e) {
+// 点击落子
+canvas.addEventListener("click", function(e) {
 
     if (gameOver) return;
 
     const rect = canvas.getBoundingClientRect();
 
-    const mouseX = e.clientX - rect.left;
-    const mouseY = e.clientY - rect.top;
+    let x = Math.round((e.clientX - rect.left - offset) / grid);
+    let y = Math.round((e.clientY - rect.top - offset) / grid);
 
-    const x = Math.round((mouseX - offset) / cellSize);
-    const y = Math.round((mouseY - offset) / cellSize);
-
-    if (
-        x < 0 ||
-        x >= size ||
-        y < 0 ||
-        y >= size
-    ) {
-        return;
-    }
-
-    if (board[x][y] !== 0) {
-        return;
-    }
+    if (x<0||x>=size||y<0||y>=size) return;
+    if (board[x][y] !== 0) return;
 
     board[x][y] = HUMAN;
+    drawPiece(x,y,HUMAN);
 
-    drawPiece(x, y, HUMAN);
-
-    if (checkWin(x, y, HUMAN)) {
-
+    if (checkWin(x,y,HUMAN)) {
         gameOver = true;
-
-        document.getElementById('status').innerHTML = '🎉 你赢了！';
-
+        document.getElementById("status").innerText = "";
+        winEl.style.display = "flex";
+        winEl.innerText = "🎉 YOU WIN!";
         return;
     }
 
-    document.getElementById('status').innerHTML = '🤖 AI思考中...';
-
+    document.getElementById("status").innerText = "AI思考中...";
     setTimeout(aiMove, 300);
 });
 
+// 重置
 function resetGame() {
-
-    gameOver = false;
-
     initBoard();
-
     drawBoard();
-
-    document.getElementById('status').innerHTML = '你是 ⚫ 黑棋';
+    gameOver = false;
+    winEl.style.display = "none";
+    document.getElementById("status").innerText = "你先手 ⚫";
 }
 
 initBoard();
