@@ -141,9 +141,7 @@ function drawPiece(x, y, player) {
 }
 
 function checkWin(x, y, p) {
-    const dirs = [
-        [1,0],[0,1],[1,1],[1,-1]
-    ];
+    const dirs = [[1,0],[0,1],[1,1],[1,-1]];
 
     for (let [dx,dy] of dirs) {
         let count = 1;
@@ -231,7 +229,7 @@ function aiMove() {
         gameOver = true;
         document.getElementById("status").innerText = "";
         winEl.style.display = "flex";
-        winEl.innerText = "🤖 AI WIN!";
+        winEl.innerText = "😈 YOU LOST";
         return;
     }
 
@@ -277,5 +275,4 @@ initBoard();
 drawBoard();
 </script>
 
-</body>
-</html>
+<div class="author"
