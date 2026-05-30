@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>AI五子棋（升级版）</title>
+<title>AI五子棋（交叉点版）</title>
 
 <style>
 body {
@@ -45,7 +45,6 @@ button {
     cursor: pointer;
 }
 
-/* 🎯 胜利居中提示 */
 #winOverlay{
     position:absolute;
     width:600px;
@@ -62,13 +61,19 @@ button {
     transform:translateX(-50%);
     pointer-events:none;
 }
+
+.author{
+    margin-top:10px;
+    font-size:14px;
+    color:#666;
+}
 </style>
 </head>
 
 <body>
 
 <div class="container">
-    <h1>🤖 AI五子棋（交叉点版）</h1>
+    <h1>🤖 AI五子棋</h1>
 
     <div id="status">你先手 ⚫</div>
 
@@ -79,6 +84,8 @@ button {
     <br>
 
     <button onclick="resetGame()">重新开始</button>
+
+    <div class="author">作者：Kimi Ding</div>
 </div>
 
 <script>
@@ -118,7 +125,6 @@ function drawBoard() {
     }
 }
 
-// 🎯 交叉点落子
 function drawPiece(x, y, player) {
     ctx.beginPath();
     ctx.arc(
@@ -134,7 +140,6 @@ function drawPiece(x, y, player) {
     ctx.stroke();
 }
 
-// 胜利检测
 function checkWin(x, y, p) {
     const dirs = [
         [1,0],[0,1],[1,1],[1,-1]
@@ -164,7 +169,6 @@ function checkWin(x, y, p) {
     return false;
 }
 
-// AI评分
 function score(x, y, p) {
     const dirs = [[1,0],[0,1],[1,1],[1,-1]];
     let s = 0;
@@ -193,7 +197,6 @@ function score(x, y, p) {
     return s;
 }
 
-// 🤖 AI下棋
 function aiMove() {
 
     let best = null;
@@ -235,7 +238,6 @@ function aiMove() {
     document.getElementById("status").innerText = "你的回合 ⚫";
 }
 
-// 点击落子
 canvas.addEventListener("click", function(e) {
 
     if (gameOver) return;
@@ -263,7 +265,6 @@ canvas.addEventListener("click", function(e) {
     setTimeout(aiMove, 300);
 });
 
-// 重置
 function resetGame() {
     initBoard();
     drawBoard();
